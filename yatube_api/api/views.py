@@ -126,7 +126,10 @@ class FollowViewSet(mixins.ListModelMixin,
         following = serializer.validated_data['following']
         if self.request.user == following:
             raise serializers.ValidationError('You cannot follow yourself')
-        if Follow.objects.filter(user=self.request.user, following=following).exists():
+        if Follow.objects.filter(
+            user=self.request.user,
+            following=following
+        ).exists():
             raise serializers.ValidationError('You already follow this user')
         serializer.save(user=self.request.user)
 
