@@ -2,11 +2,10 @@ from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters, mixins, status, viewsets
+from rest_framework import filters, mixins, serializers, viewsets
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import (IsAuthenticated,
                                         IsAuthenticatedOrReadOnly)
-from rest_framework.response import Response
 
 from api.permissions import IsAuthorOrReadOnly
 from api.serializers import (CommentSerializer,
@@ -43,7 +42,6 @@ class PostViewSet(BaseViewSet):
     )
     filterset_fields = ('author', 'group', 'pub_date',)
     ordering_fields = ('author', 'pub_date',)
-    ordering = ('-pub_date',)
     search_fields = ('author__username', 'group', 'pub_date', 'text',)
 
     def perform_create(self, serializer):
@@ -125,25 +123,11 @@ class FollowViewSet(mixins.ListModelMixin,
         Проверяет, что пользователь не пытается подписаться на самого себя
         и что такая подписка еще не существует.
         """
-        if self.request.user.is_anonymous:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-
         following = serializer.validated_data['following']
         if self.request.user == following:
-            return Response(
-                {'error': 'You cannot follow yourself'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        if Follow.objects.filter(
-            user=self.request.user,
-            following=following
-        ).exists():
-            return Response(
-                {'error': 'You already follow this user'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
+            raise serializers.ValidationError('You cannot follow yourself')
+        if Follow.objects.filter(user=self.request.user, following=following).exists():
+            raise serializers.ValidationError('You already follow this user')
         serializer.save(user=self.request.user)
 
 
