@@ -1,7 +1,7 @@
+from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from posts.models import Comment, Follow, Group, Post
-from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
@@ -78,9 +78,12 @@ class FollowSerializer(serializers.ModelSerializer):
     Сериализатор для модели Follow.
 
     Attributes:
-        user (serializers.SlugRelatedField): Поле для пользователя, который подписан.
-        following (serializers.SlugRelatedField): Поле для пользователя, на которого подписаны.
+        user (serializers.SlugRelatedField): Поле для пользователя,
+        который подписан.
+        following (serializers.SlugRelatedField): Поле для пользователя,
+        на которого подписаны.
     """
+
     user = serializers.SlugRelatedField(
         slug_field='username',
         read_only=True,

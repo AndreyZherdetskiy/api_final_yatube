@@ -1,22 +1,26 @@
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
+
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, mixins, status, viewsets
 from rest_framework.pagination import LimitOffsetPagination
-from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
+from rest_framework.permissions import (IsAuthenticated,
+                                        IsAuthenticatedOrReadOnly)
 from rest_framework.response import Response
 
 from api.permissions import IsAuthorOrReadOnly
-from api.serializers import CommentSerializer, FollowSerializer, GroupSerializer, PostSerializer
+from api.serializers import (CommentSerializer,
+                             FollowSerializer,
+                             GroupSerializer,
+                             PostSerializer)
 from posts.models import Follow, Group, Post
 
 User = get_user_model()
 
 
 class BaseViewSet(viewsets.ModelViewSet):
-    """
-    Базовый ViewSet, содержащий общую логику.
-    """
+    """Базовый ViewSet, содержащий общую логику."""
+
     permission_classes = (IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly,)
 
 
@@ -32,7 +36,11 @@ class PostViewSet(BaseViewSet):
     queryset = Post.objects.all()
     serializer_class = PostSerializer
     pagination_class = LimitOffsetPagination
-    filter_backends = (DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter,)
+    filter_backends = (
+        DjangoFilterBackend,
+        filters.OrderingFilter,
+        filters.SearchFilter,
+    )
     filterset_fields = ('author', 'group', 'pub_date',)
     ordering_fields = ('author', 'pub_date',)
     ordering = ('-pub_date',)
@@ -55,7 +63,11 @@ class CommentViewSet(BaseViewSet):
     """
 
     serializer_class = CommentSerializer
-    filter_backends = (DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter)
+    filter_backends = (
+        DjangoFilterBackend,
+        filters.OrderingFilter,
+        filters.SearchFilter,
+    )
     filterset_fields = ('author', 'post', 'created',)
     ordering_fields = ('author', 'post', 'created',)
     ordering = ('created',)
@@ -63,8 +75,8 @@ class CommentViewSet(BaseViewSet):
 
     def get_queryset(self):
         """
-        Возвращает все комментарии, связанные с определенным постом,
-        используя post_id из URL-адреса.
+        Возвращает все комментарии, связанные с определенным постом.
+        Использует post_id из URL-адреса.
         Предварительно проверяет, что запрошенный пост существует.
         """
         post_id = self.kwargs.get('post_id')
@@ -84,8 +96,8 @@ class CommentViewSet(BaseViewSet):
 
 
 class FollowViewSet(mixins.ListModelMixin,
-                   mixins.CreateModelMixin,
-                   viewsets.GenericViewSet):
+                    mixins.CreateModelMixin,
+                    viewsets.GenericViewSet):
     """
     ViewSet для работы с подписками.
 
@@ -123,7 +135,10 @@ class FollowViewSet(mixins.ListModelMixin,
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        if Follow.objects.filter(user=self.request.user, following=following).exists():
+        if Follow.objects.filter(
+            user=self.request.user,
+            following=following
+        ).exists():
             return Response(
                 {'error': 'You already follow this user'},
                 status=status.HTTP_400_BAD_REQUEST
@@ -146,7 +161,11 @@ class GroupViewSet(mixins.ListModelMixin,
     queryset = Group.objects.all()
     serializer_class = GroupSerializer
     permission_classes = (IsAuthenticatedOrReadOnly,)
-    filter_backends = (DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter)
+    filter_backends = (
+        DjangoFilterBackend,
+        filters.OrderingFilter,
+        filters.SearchFilter,
+    )
     filterset_fields = ('slug', 'title',)
     ordering_fields = ('slug', 'title',)
     ordering = ('title',)
