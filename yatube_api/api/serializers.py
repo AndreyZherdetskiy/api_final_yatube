@@ -6,13 +6,6 @@ from posts.models import Comment, Follow, Group, Post
 User = get_user_model()
 
 
-class UserSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = User
-        fields = ('id', 'username')
-
-
 class PostSerializer(serializers.ModelSerializer):
     """
     Сериализатор для модели Post.
@@ -97,3 +90,15 @@ class FollowSerializer(serializers.ModelSerializer):
     class Meta:
         model = Follow
         fields = ('user', 'following')
+        validators = [
+            serializers.UniqueTogetherValidator(
+                queryset=Follow.objects.all(),
+                fields=('user', 'following'),
+                message='You already follow this user'
+            )
+        ]
+
+    def validate(self, data):
+        if data['following'] == self.context['request'].user:
+            raise serializers.ValidationError('You cannot follow yourself')
+        return data

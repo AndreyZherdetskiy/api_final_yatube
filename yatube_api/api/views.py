@@ -1,8 +1,7 @@
-from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters, mixins, serializers, viewsets
+from rest_framework import filters, mixins, viewsets
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import (IsAuthenticated,
                                         IsAuthenticatedOrReadOnly)
@@ -14,11 +13,14 @@ from api.serializers import (CommentSerializer,
                              PostSerializer)
 from posts.models import Follow, Group, Post
 
-User = get_user_model()
-
 
 class BaseViewSet(viewsets.ModelViewSet):
-    """Базовый ViewSet, содержащий общую логику."""
+    """
+    Базовый ViewSet, содержащий общую логику.
+
+    Attributes:
+        permission_classes (tuple): Набор разрешений для данного ViewSet.
+    """
 
     permission_classes = (IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly,)
 
@@ -30,6 +32,11 @@ class PostViewSet(BaseViewSet):
     Attributes:
         queryset (QuerySet): Набор объектов модели Post.
         serializer_class (serializer): Сериализатор для модели Post.
+        pagination_class (LimitOffsetPagination): Класс пагинации для постов.
+        filter_backends (tuple): Набор фильтров для постов.
+        filterset_fields (tuple): Поля, по которым можно фильтровать посты.
+        ordering_fields (tuple): Поля, по которым можно сортировать посты.
+        search_fields (tuple): Поля, по которым можно искать посты.
     """
 
     queryset = Post.objects.all()
@@ -58,6 +65,13 @@ class CommentViewSet(BaseViewSet):
 
     Attributes:
         serializer_class (serializer): Сериализатор для модели Comment.
+        filter_backends (tuple): Набор фильтров для комментариев.
+        filterset_fields (tuple): Поля, по которым можно фильтровать
+        комментарии.
+        ordering_fields (tuple): Поля, по которым можно сортировать
+        комментарии.
+        ordering (str): Порядок сортировки комментариев.
+        search_fields (tuple): Поля, по которым можно искать комментарии.
     """
 
     serializer_class = CommentSerializer
@@ -101,6 +115,9 @@ class FollowViewSet(mixins.ListModelMixin,
 
     Attributes:
         serializer_class (serializer): Сериализатор для модели Follow.
+        permission_classes (tuple): Набор разрешений для данного ViewSet.
+        filter_backends (tuple): Набор фильтров для подписок.
+        search_fields (tuple): Поля, по которым можно искать подписки.
     """
 
     serializer_class = FollowSerializer
@@ -120,17 +137,7 @@ class FollowViewSet(mixins.ListModelMixin,
         Сохраняет новую подписку.
         Устанавливает пользователя, который подписывается,
         как текущего пользователя.
-        Проверяет, что пользователь не пытается подписаться на самого себя
-        и что такая подписка еще не существует.
         """
-        following = serializer.validated_data['following']
-        if self.request.user == following:
-            raise serializers.ValidationError('You cannot follow yourself')
-        if Follow.objects.filter(
-            user=self.request.user,
-            following=following
-        ).exists():
-            raise serializers.ValidationError('You already follow this user')
         serializer.save(user=self.request.user)
 
 
@@ -143,6 +150,12 @@ class GroupViewSet(mixins.ListModelMixin,
     Attributes:
         queryset (QuerySet): Набор объектов модели Group.
         serializer_class (serializer): Сериализатор для модели Group.
+        permission_classes (tuple): Набор разрешений для данного ViewSet.
+        filter_backends (tuple): Набор фильтров для групп.
+        filterset_fields (tuple): Поля, по которым можно фильтровать группы.
+        ordering_fields (tuple): Поля, по которым можно сортировать группы.
+        ordering (str): Порядок сортировки групп.
+        search_fields (tuple): Поля, по которым можно искать группы.
     """
 
     queryset = Group.objects.all()
