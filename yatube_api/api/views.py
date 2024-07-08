@@ -11,7 +11,7 @@ from api.serializers import (CommentSerializer,
                              FollowSerializer,
                              GroupSerializer,
                              PostSerializer)
-from posts.models import Follow, Group, Post
+from posts.models import Group, Post
 
 
 class BaseViewSet(viewsets.ModelViewSet):
@@ -126,11 +126,8 @@ class FollowViewSet(mixins.ListModelMixin,
     search_fields = ('following__username',)
 
     def get_queryset(self):
-        """
-        Возвращает все подписки текущего пользователя.
-        Если пользователь анонимный, возвращает пустой набор.
-        """
-        return Follow.objects.filter(user=self.request.user)
+        """Возвращает все подписки текущего пользователя."""
+        return self.request.user.following.all()
 
     def perform_create(self, serializer):
         """
