@@ -1,14 +1,15 @@
-from pathlib import Path
-
 from datetime import timedelta
+from pathlib import Path
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'hhz7l-ltdismtf@bzyz+rple7*s*w$jak%whj@(@u0eok^f9k4'
-
-DEBUG = True
-
-ALLOWED_HOSTS = []
+SECRET_KEY = os.environ.get('SECRET_KEY', 'changeme')
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',') if os.environ.get('ALLOWED_HOSTS') else []
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -56,11 +57,21 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'yatube_api.wsgi.application'
 
+DB_ENGINE = os.environ.get('DB_ENGINE', 'django.db.backends.sqlite3')
+DB_NAME = os.environ.get('DB_NAME', BASE_DIR / 'db.sqlite3')
+DB_USER = os.environ.get('DB_USER', '')
+DB_PASSWORD = os.environ.get('DB_PASSWORD', '')
+DB_HOST = os.environ.get('DB_HOST', '')
+DB_PORT = os.environ.get('DB_PORT', '')
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': DB_ENGINE,
+        'NAME': BASE_DIR / DB_NAME,
+        'USER': DB_USER,
+        'PASSWORD': DB_PASSWORD,
+        'HOST': DB_HOST,
+        'PORT': DB_PORT,
     }
 }
 
@@ -79,14 +90,10 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-LANGUAGE_CODE = 'en-us'
-
-TIME_ZONE = 'UTC'
-
+LANGUAGE_CODE = os.environ.get('LANGUAGE_CODE', 'en-us')
+TIME_ZONE = os.environ.get('TIME_ZONE', 'UTC')
 USE_I18N = True
-
 USE_L10N = True
-
 USE_TZ = True
 
 STATIC_URL = '/static/'
@@ -96,25 +103,22 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
-
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
-
     'DEFAULT_THROTTLE_CLASSES': [
         'rest_framework.throttling.UserRateThrottle',
-        'rest_framework.throttling.AnonRateThrottle'
+        'rest_framework.throttling.AnonRateThrottle',
     ],
-
     'DEFAULT_THROTTLE_RATES': {
-        'user': '10000/day',
-        'anon': '1000/day',
+        'user': os.environ.get('THROTTLE_USER', '10000/day'),
+        'anon': os.environ.get('THROTTLE_ANON', '1000/day'),
     },
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
-    'AUTH_HEADER_TYPES': ('Bearer',),
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=int(os.environ.get('JWT_ACCESS_DAYS', 1))),
+    'AUTH_HEADER_TYPES': (os.environ.get('JWT_HEADER_TYPE', 'Bearer'),),
 }
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
