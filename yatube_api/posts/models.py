@@ -1,6 +1,19 @@
+from django.contrib.auth import get_user_model
 from django.db import models
 from django.db.models import CheckConstraint, Q, UniqueConstraint
-from django.contrib.auth import get_user_model
+
+from posts.constants import (
+    GROUP_TITLE_MAX_LENGTH,
+    NO_SELF_FOLLOW_CONSTRAINT,
+    RELATED_NAME_COMMENTS,
+    RELATED_NAME_FOLLOWER,
+    RELATED_NAME_FOLLOWING,
+    RELATED_NAME_POSTS,
+    STR_CREATED,
+    STR_PUB_DATE,
+    UNIQUE_FOLLOW_CONSTRAINT
+)
+
 
 User = get_user_model()
 
@@ -15,11 +28,11 @@ class Group(models.Model):
         description (str): Описание группы.
     """
 
-    title = models.CharField(max_length=200)
+    title = models.CharField(max_length=GROUP_TITLE_MAX_LENGTH)
     slug = models.SlugField(unique=True)
     description = models.TextField()
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.title
 
 
@@ -36,21 +49,18 @@ class Post(models.Model):
     """
 
     text = models.TextField()
-    pub_date = models.DateTimeField(
-        'Дата публикации', auto_now_add=True
-    )
-    author = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name='posts'
-    )
-    image = models.ImageField(
-        upload_to='posts/', null=True, blank=True
-    )
+    pub_date = models.DateTimeField(STR_PUB_DATE, auto_now_add=True)
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name=RELATED_NAME_POSTS)
+    image = models.ImageField(upload_to='posts/', null=True, blank=True)
     group = models.ForeignKey(
-        Group, on_delete=models.SET_NULL,
-        related_name='posts', blank=True, null=True
+        Group,
+        on_delete=models.SET_NULL,
+        related_name=RELATED_NAME_POSTS,
+        blank=True,
+        null=True,
     )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.text
 
 
@@ -65,16 +75,10 @@ class Comment(models.Model):
         created (datetime): Дата создания комментария.
     """
 
-    author = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name='comments'
-    )
-    post = models.ForeignKey(
-        Post, on_delete=models.CASCADE, related_name='comments'
-    )
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name=RELATED_NAME_COMMENTS)
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name=RELATED_NAME_COMMENTS)
     text = models.TextField()
-    created = models.DateTimeField(
-        'Дата добавления', auto_now_add=True, db_index=True
-    )
+    created = models.DateTimeField(STR_CREATED, auto_now_add=True, db_index=True)
 
 
 class Follow(models.Model):
@@ -86,20 +90,13 @@ class Follow(models.Model):
         following (User): Пользователь, на которого подписаны.
     """
 
-    user = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name='following'
-    )
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name=RELATED_NAME_FOLLOWING)
     following = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name='follower'
+        User, on_delete=models.CASCADE, related_name=RELATED_NAME_FOLLOWER
     )
 
     class Meta:
         constraints = [
-            UniqueConstraint(
-                fields=['user', 'following'], name='unique_follow'
-            ),
-            CheckConstraint(
-                check=~Q(user=models.F('following')),
-                name='no_self_follow'
-            )
+            UniqueConstraint(fields=['user', 'following'], name=UNIQUE_FOLLOW_CONSTRAINT),
+            CheckConstraint(check=~Q(user=models.F('following')), name=NO_SELF_FOLLOW_CONSTRAINT),
         ]

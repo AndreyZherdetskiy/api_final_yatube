@@ -1,16 +1,13 @@
+from django.db.models import Prefetch, QuerySet
 from django.shortcuts import get_object_or_404
-
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, mixins, viewsets
 from rest_framework.pagination import LimitOffsetPagination
-from rest_framework.permissions import (IsAuthenticated,
-                                        IsAuthenticatedOrReadOnly)
+from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
+from rest_framework.serializers import BaseSerializer
 
 from api.permissions import IsAuthorOrReadOnly
-from api.serializers import (CommentSerializer,
-                             FollowSerializer,
-                             GroupSerializer,
-                             PostSerializer)
+from api.serializers import CommentSerializer, FollowSerializer, GroupSerializer, PostSerializer
 from posts.models import Group, Post
 
 
@@ -22,7 +19,10 @@ class BaseViewSet(viewsets.ModelViewSet):
         permission_classes (tuple): Набор разрешений для данного ViewSet.
     """
 
-    permission_classes = (IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly,)
+    permission_classes = (
+        IsAuthenticatedOrReadOnly,
+        IsAuthorOrReadOnly,
+    )
 
 
 class PostViewSet(BaseViewSet):
@@ -39,7 +39,7 @@ class PostViewSet(BaseViewSet):
         search_fields (tuple): Поля, по которым можно искать посты.
     """
 
-    queryset = Post.objects.all()
+    queryset = Post.objects.select_related('author', 'group').all()
     serializer_class = PostSerializer
     pagination_class = LimitOffsetPagination
     filter_backends = (
@@ -47,16 +47,29 @@ class PostViewSet(BaseViewSet):
         filters.OrderingFilter,
         filters.SearchFilter,
     )
-    filterset_fields = ('author', 'group', 'pub_date',)
-    ordering_fields = ('author', 'pub_date',)
-    search_fields = ('author__username', 'group', 'pub_date', 'text',)
+    filterset_fields = (
+        'author',
+        'group',
+        'pub_date',
+    )
+    ordering_fields = (
+        'author',
+        'pub_date',
+    )
+    search_fields = (
+        'author__username',
+        'group',
+        'pub_date',
+        'text',
+    )
 
-    def perform_create(self, serializer):
-        """
-        Сохраняет новый пост.
-        Устанавливает автора как текущего пользователя.
-        """
+    def perform_create(self, serializer: BaseSerializer) -> None:
+        """Сохраняет новый пост. Устанавливает автора как текущего пользователя."""
         serializer.save(author=self.request.user)
+
+    def get_queryset(self) -> QuerySet:
+        """Возвращает оптимизированный queryset для постов."""
+        return Post.objects.select_related('author', 'group').all()
 
 
 class CommentViewSet(BaseViewSet):
@@ -80,24 +93,48 @@ class CommentViewSet(BaseViewSet):
         filters.OrderingFilter,
         filters.SearchFilter,
     )
-    filterset_fields = ('author', 'post', 'created',)
-    ordering_fields = ('author', 'post', 'created',)
+    filterset_fields = (
+        'author',
+        'post',
+        'created',
+    )
+    ordering_fields = (
+        'author',
+        'post',
+        'created',
+    )
     ordering = ('created',)
     search_fields = ('__all__',)
 
-    def get_queryset(self):
+    def get_queryset(self) -> QuerySet:
         """
         Возвращает все комментарии, связанные с определенным постом.
+
         Использует post_id из URL-адреса.
         Предварительно проверяет, что запрошенный пост существует.
         """
         post_id = self.kwargs.get('post_id')
-        post = get_object_or_404(Post, id=post_id)
-        return post.comments.all()
+        return (
+            Post.objects.filter(id=post_id)
+            .prefetch_related(
+                Prefetch(
+                    'comments',
+                    queryset=CommentSerializer.Meta.model.objects.select_related(
+                        'author',
+                        'post',
+                    ),
+                )
+            )
+            .first()
+            .comments.all()
+            if Post.objects.filter(id=post_id).exists()
+            else CommentSerializer.Meta.model.objects.none()
+        )
 
-    def perform_create(self, serializer):
+    def perform_create(self, serializer: BaseSerializer) -> None:
         """
         Сохраняет новый комментарий.
+
         Устанавливает автора как текущего пользователя
         и связывает комментарий с постом, используя post_id из URL-адреса.
         Предварительно проверяет, что запрошенный пост существует.
@@ -107,9 +144,7 @@ class CommentViewSet(BaseViewSet):
         serializer.save(author=self.request.user, post=post)
 
 
-class FollowViewSet(mixins.ListModelMixin,
-                    mixins.CreateModelMixin,
-                    viewsets.GenericViewSet):
+class FollowViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, viewsets.GenericViewSet):
     """
     ViewSet для работы с подписками.
 
@@ -125,22 +160,21 @@ class FollowViewSet(mixins.ListModelMixin,
     filter_backends = (filters.SearchFilter,)
     search_fields = ('following__username',)
 
-    def get_queryset(self):
+    def get_queryset(self) -> QuerySet:
         """Возвращает все подписки текущего пользователя."""
-        return self.request.user.following.all()
+        return self.request.user.following.select_related('following').all()
 
-    def perform_create(self, serializer):
+    def perform_create(self, serializer: BaseSerializer) -> None:
         """
         Сохраняет новую подписку.
+
         Устанавливает пользователя, который подписывается,
         как текущего пользователя.
         """
         serializer.save(user=self.request.user)
 
 
-class GroupViewSet(mixins.ListModelMixin,
-                   mixins.RetrieveModelMixin,
-                   viewsets.GenericViewSet):
+class GroupViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     """
     ViewSet для работы с группами.
 
@@ -163,7 +197,13 @@ class GroupViewSet(mixins.ListModelMixin,
         filters.OrderingFilter,
         filters.SearchFilter,
     )
-    filterset_fields = ('slug', 'title',)
-    ordering_fields = ('slug', 'title',)
+    filterset_fields = (
+        'slug',
+        'title',
+    )
+    ordering_fields = (
+        'slug',
+        'title',
+    )
     ordering = ('title',)
     search_fields = ('__all__',)

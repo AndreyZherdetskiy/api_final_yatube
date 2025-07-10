@@ -1,7 +1,9 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
+from api.constants import ERR_ALREADY_FOLLOW, ERR_SELF_FOLLOW
 from posts.models import Comment, Follow, Group, Post
+
 
 User = get_user_model()
 
@@ -17,10 +19,7 @@ class PostSerializer(serializers.ModelSerializer):
         необязательное.
     """
 
-    author = serializers.SlugRelatedField(
-        slug_field='username',
-        read_only=True
-    )
+    author = serializers.SlugRelatedField(slug_field='username', read_only=True)
 
     class Meta:
         model = Post
@@ -55,10 +54,7 @@ class CommentSerializer(serializers.ModelSerializer):
         created (datetime): Дата создания комментария.
     """
 
-    author = serializers.SlugRelatedField(
-        slug_field='username',
-        read_only=True
-    )
+    author = serializers.SlugRelatedField(slug_field='username', read_only=True)
 
     class Meta:
         model = Comment
@@ -78,14 +74,9 @@ class FollowSerializer(serializers.ModelSerializer):
     """
 
     user = serializers.SlugRelatedField(
-        slug_field='username',
-        read_only=True,
-        default=serializers.CurrentUserDefault()
+        slug_field='username', read_only=True, default=serializers.CurrentUserDefault()
     )
-    following = serializers.SlugRelatedField(
-        slug_field='username',
-        queryset=User.objects.all()
-    )
+    following = serializers.SlugRelatedField(slug_field='username', queryset=User.objects.all())
 
     class Meta:
         model = Follow
@@ -94,15 +85,12 @@ class FollowSerializer(serializers.ModelSerializer):
             serializers.UniqueTogetherValidator(
                 queryset=Follow.objects.all(),
                 fields=('user', 'following'),
-                message='You already follow this user'
+                message=ERR_ALREADY_FOLLOW,
             )
         ]
 
-    def validate_following(self, value):
-        """
-        Проверяет, что пользователь не пытается подписаться
-        на самого себя.
-        """
+    def validate_following(self, value: User) -> User:
+        """Проверяет, что пользователь не пытается подписаться на самого себя."""
         if value == self.context['request'].user:
-            raise serializers.ValidationError('You cannot follow yourself')
+            raise serializers.ValidationError(ERR_SELF_FOLLOW)
         return value
